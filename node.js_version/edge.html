@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>路径管理 - Pathpay Optimizer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>body { font-family: Arial, sans-serif; margin: 30px; background: #f7f7f7; } h1 { text-align: center; } h2 { color: #2c3e50; } .section { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #eee; margin-bottom: 30px; padding: 20px; } label { display: block; margin-top: 10px; } input, select { margin-top: 5px; padding: 8px; border-radius: 4px; border: 1px solid #ccc; width: calc(100% - 16px); } button { margin-top: 10px; padding: 10px 20px; border: none; border-radius: 4px; background: #3498db; color: #fff; cursor: pointer; width: 100%; } button:hover { background: #217dbb; } .center { text-align: center; } .btn-group { display: flex; flex-direction: column; gap: 16px; max-width: 300px; margin: 30px auto 0 auto; } table { width: 100%; border-collapse: collapse; margin-top: 20px; } th, td { border: 1px solid #ccc; padding: 8px; text-align: center; } th { background: #f0f0f0; }</style>
+</head>
+<body>
+    <h1>路径管理</h1>
+    <div class="section center">
+        <div>当前用户：<span id="edge-user"></span>（<span id="edge-role"></span>）</div>
+        <button onclick="location.href='home.html'">返回主页</button>
+    </div>
+    <div class="section">
+        <h2>添加新路径</h2>
+        <form id="add-edge-form">
+            <label>起点机构名称：<input type="text" id="from-name" required></label>
+            <label>终点机构名称：<input type="text" id="to-name" required></label>
+            <label>手续费率：<input type="number" step="0.0001" id="fee-rate" required></label>
+            <label>起点币种：<input type="text" id="from-cur" required></label>
+            <label>终点币种：<input type="text" id="to-cur" required></label>
+            <button type="submit">添加路径</button>
+        </form>
+    </div>
+    <div class="section">
+        <h2>路径列表</h2>
+        <table id="edge-table">
+            <thead><tr><th>起点机构</th><th>终点机构</th><th>手续费率</th><th>起点币种</th><th>终点币种</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <script>
+        let userRole = localStorage.getItem('userRole') || '';
+        let currentUser = localStorage.getItem('currentUser') || '';
+        function checkAuth() {
+            if (!userRole || !currentUser) {
+                window.location.href = 'login.html';
+            }
+            document.getElementById('edge-user').innerText = currentUser;
+            document.getElementById('edge-role').innerText = userRole === 'admin' ? '管理员' : '普通用户';
+            if (userRole !== 'admin') {
+                document.getElementById('add-edge-form').style.display = 'none';
+            }
+        }
+        function loadEdges() {
+            fetch('/api/edges')
+                .then(res => res.json())
+                .then(data => {
+                    let tbody = document.querySelector('#edge-table tbody');
+                    tbody.innerHTML = '';
+                    data.forEach(edge => {
+                        let tr = document.createElement('tr');
+                        tr.innerHTML = `<td>${edge.from}</td><td>${edge.to}</td><td>${edge.feeRate}</td><td>${edge.fromCur}</td><td>${edge.toCur}</td>`;
+                        tbody.appendChild(tr);
+                    });
+                });
+        }
+        document.getElementById('add-edge-form').onsubmit = function(e) {
+            e.preventDefault();
+            let from = document.getElementById('from-name').value.trim();
+            let to = document.getElementById('to-name').value.trim();
+            let feeRate = document.getElementById('fee-rate').value.trim();
+            let fromCur = document.getElementById('from-cur').value.trim();
+            let toCur = document.getElementById('to-cur').value.trim();
+            if (!from || !to || !feeRate || !fromCur || !toCur) return;
+            fetch('/api/edge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ from, to, feeRate, fromCur, toCur })
+            }).then(res => res.json()).then(r => {
+                if (r.msg && r.msg.includes('成功')) {
+                    loadEdges();
+                    document.getElementById('from-name').value = '';
+                    document.getElementById('to-name').value = '';
+                    document.getElementById('fee-rate').value = '';
+                    document.getElementById('from-cur').value = '';
+                    document.getElementById('to-cur').value = '';
+                } else {
+                    alert(r.msg || '添加失败');
+                }
+            });
+        };
+        window.onload = function() {
+            checkAuth();
+            loadEdges();
+        };
+    </script>
+</body>
+</html>

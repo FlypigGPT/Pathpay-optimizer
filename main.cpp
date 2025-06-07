@@ -152,7 +152,7 @@ public:
         std::string name, country;
         std::cout << "Institution list:" << std::endl;
         while (inFile >> name >> country) {
-            std::cout << "Institution: " << name << "£¬Country: " << country << std::endl;
+            std::cout << "Institution: " << name << "Country: " << country << std::endl;
         }
     }
 
@@ -178,7 +178,7 @@ public:
         double fee;
         std::cout << "Financial flow path list:" << std::endl;
         while (inFile >> from >> to >> fee >> fromCur >> toCur) {
-            std::cout << "From " << from << " to " << to << "£¬Fee rate: " << fee << "£¬Currency: " << fromCur << " -> " << toCur << std::endl;
+            std::cout << "From " << from << " to " << to << "Fee rate: " << fee << "Currency: " << fromCur << " -> " << toCur << std::endl;
         }
     }
 
@@ -263,6 +263,7 @@ std::string getCurrencyFromEdges(const std::string& institution, bool isSource) 
 // Main program entry point
 int main() {
     UserManager userManager;
+
     GraphManager graphManager;
     RateManager rateManager;
     char choice;

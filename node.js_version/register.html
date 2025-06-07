@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>注册 - Pathpay Optimizer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>body { font-family: Arial, sans-serif; margin: 30px; background: #f7f7f7; } h1 { text-align: center; } .section { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #eee; margin-bottom: 30px; padding: 20px; } label { display: block; margin-top: 10px; } input, select { margin-top: 5px; padding: 8px; border-radius: 4px; border: 1px solid #ccc; width: calc(100% - 16px); } button { margin-top: 10px; padding: 10px 20px; border: none; border-radius: 4px; background: #3498db; color: #fff; cursor: pointer; width: 100%; } button:hover { background: #217dbb; } .center { text-align: center; }</style>
+</head>
+<body>
+    <h1>Pathpay Optimizer</h1>
+    <div class="section">
+        <h2>注册</h2>
+        <label>用户名 <input id="register-username"></label>
+        <label>密码 <input id="register-password" type="password"></label>
+        <label>角色
+            <select id="register-role">
+                <option value="user">用户</option>
+                <option value="admin">管理员</option>
+            </select>
+        </label>
+        <button onclick="register()">注册</button>
+        <div class="center"><a href="login.html">已有账号？去登录</a></div>
+        <div id="register-msg"></div>
+    </div>
+    <script>
+        const api = 'http://localhost:3000/api';
+        function register() {
+            fetch(api + '/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: document.getElementById('register-username').value,
+                    password: document.getElementById('register-password').value,
+                    role: document.getElementById('register-role').value
+                })
+            }).then(r => r.json()).then(d => {
+                document.getElementById('register-msg').innerText = d.msg;
+                if (d.msg && d.msg.includes('成功')) {
+                    setTimeout(() => window.location.href = 'login.html', 1000);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

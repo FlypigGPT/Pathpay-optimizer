@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>登录 - Pathpay Optimizer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>body { font-family: Arial, sans-serif; margin: 30px; background: #f7f7f7; } h1 { text-align: center; } .section { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #eee; margin-bottom: 30px; padding: 20px; } label { display: block; margin-top: 10px; } input { margin-top: 5px; padding: 8px; border-radius: 4px; border: 1px solid #ccc; width: calc(100% - 16px); } button { margin-top: 10px; padding: 10px 20px; border: none; border-radius: 4px; background: #3498db; color: #fff; cursor: pointer; width: 100%; } button:hover { background: #217dbb; } .center { text-align: center; }</style>
+</head>
+<body>
+    <h1>Pathpay Optimizer</h1>
+    <div class="section">
+        <h2>登录</h2>
+        <label>用户名 <input id="login-username"></label>
+        <label>密码 <input id="login-password" type="password"></label>
+        <button onclick="login()">登录</button>
+        <div class="center"><a href="register.html">没有账号？去注册</a></div>
+        <div id="login-msg"></div>
+    </div>
+    <script>
+        const api = 'http://localhost:3000/api';
+        function login() {
+            fetch(api + '/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: document.getElementById('login-username').value,
+                    password: document.getElementById('login-password').value
+                })
+            }).then(r => r.json()).then(d => {
+                if (d.role) {
+                    localStorage.setItem('userRole', d.role);
+                    localStorage.setItem('currentUser', document.getElementById('login-username').value);
+                    window.location.href = 'home.html';
+                } else {
+                    document.getElementById('login-msg').innerText = d.msg || '登录失败';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

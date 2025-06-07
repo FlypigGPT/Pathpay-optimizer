@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Pathpay Optimizer 可视化</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; background: #f7f7f7; }
+        h1 { text-align: center; }
+        h2 { color: #2c3e50; }
+        .section { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #eee; margin-bottom: 30px; padding: 20px; }
+        label { display: block; margin-top: 10px; }
+        input, select { margin-top: 5px; padding: 8px; border-radius: 4px; border: 1px solid #ccc; width: calc(100% - 16px); }
+        button { margin-top: 10px; padding: 10px 20px; border: none; border-radius: 4px; background: #3498db; color: #fff; cursor: pointer; width: 100%; }
+        button:hover { background: #217dbb; }
+        .result, .list { margin-top: 15px; background: #f0f8ff; padding: 10px; border-radius: 4px; }
+        .tab { display: inline-block; margin-right: 20px; cursor: pointer; color: #3498db; font-weight: bold; }
+        .tab.active { color: #fff; background: #3498db; border-radius: 4px; padding: 4px 12px; }
+        .hide { display: none; }
+        .flex { display: flex; gap: 30px; }
+        .flex > div { flex: 1; }
+        .center { text-align: center; }
+    </style>
+</head>
+<body>
+    <script>
+        window.location.href = 'login.html';
+    </script>
+    <h1>Pathpay Optimizer 可视化系统</h1>
+    <!-- 登录页面 -->
+    <div id="page-login">
+        <div class="section">
+            <h2>登录</h2>
+            <label>用户名 <input id="login-username"></label>
+            <label>密码 <input id="login-password" type="password"></label>
+            <button onclick="login()">登录</button>
+            <div class="center"><a href="#" onclick="showPage('register')">没有账号？去注册</a></div>
+            <div id="login-msg"></div>
+        </div>
+    </div>
+    <!-- 注册页面 -->
+    <div id="page-register" class="hide">
+        <div class="section">
+            <h2>注册</h2>
+            <label>用户名 <input id="register-username"></label>
+            <label>密码 <input id="register-password" type="password"></label>
+            <label>角色
+                <select id="register-role">
+                    <option value="user">用户</option>
+                    <option value="admin">管理员</option>
+                </select>
+            </label>
+            <button onclick="register()">注册</button>
+            <div class="center"><a href="#" onclick="showPage('login')">已有账号？去登录</a></div>
+            <div id="register-msg"></div>
+        </div>
+    </div>
+    <!-- home页面 -->
+    <div id="page-home" class="hide">
+        <div class="section center">
+            <h2>欢迎，<span id="home-user"></span>！</h2>
+            <div id="home-role"></div>
+            <button onclick="logout()">退出登录</button>
+        </div>
+        <div id="admin-tabs" class="hide">
+            <span class="tab active" id="tab-admin-institution" onclick="showAdminTab('institution')">机构管理</span>
+            <span class="tab" id="tab-admin-edge" onclick="showAdminTab('edge')">金融流路径管理</span>
+            <span class="tab" id="tab-admin-path" onclick="showAdminTab('path')">最优路径查询</span>
+        </div>
+        <div id="user-tabs" class="hide">
+            <span class="tab active" id="tab-user-path" onclick="showUserTab('path')">最优路径查询</span>
+        </div>
+        <!-- 管理员页面内容 -->
+        <div id="admin-institution" class="hide">
+            <div class="section">
+                <h2>机构管理</h2>
+                <label>机构名 <input id="inst-name"></label>
+                <label>国家 <input id="inst-country"></label>
+                <button onclick="addInstitution()">添加机构</button>
+                <button onclick="getInstitutions()">查看机构</button>
+                <div class="list" id="inst-list"></div>
+            </div>
+        </div>
+        <div id="admin-edge" class="hide">
+            <div class="section">
+                <h2>金融流路径管理</h2>
+                <label>源机构 <input id="edge-from"></label>
+                <label>目标机构 <input id="edge-to"></label>
+                <label>手续费率 <input id="edge-fee" placeholder="如0.001"></label>
+                <label>源币种 <input id="edge-fromCur"></label>
+                <label>目标币种 <input id="edge-toCur"></label>
+                <button onclick="addEdge()">添加路径</button>
+                <button onclick="getEdges()">查看所有路径</button>
+                <div class="list" id="edge-list"></div>
+            </div>
+        </div>
+        <div id="admin-path" class="hide">
+            <div class="section">
+                <h2>最优路径查询</h2>
+                <label>源机构 <input id="path-from"></label>
+                <label>目标机构 <input id="path-to"></label>
+                <label>初始金额 <input id="path-amount"></label>
+                <button onclick="findBestPath()">查询最优路径</button>
+                <div class="result" id="path-result"></div>
+            </div>
+        </div>
+        <!-- 用户页面内容 -->
+        <div id="user-path" class="hide">
+            <div class="section">
+                <h2>最优路径查询</h2>
+                <label>源机构 <input id="upath-from"></label>
+                <label>目标机构 <input id="upath-to"></label>
+                <label>初始金额 <input id="upath-amount"></label>
+                <button onclick="findBestPathUser()">查询最优路径</button>
+                <div class="result" id="upath-result"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const api = 'http://localhost:3000/api';
+        let userRole = '';
+        let currentUser = '';
+        // 页面切换
+        function showPage(page) {
+            pageLogin.style.display = page === 'login' ? '' : 'none';
+            pageRegister.style.display = page === 'register' ? '' : 'none';
+            pageHome.style.display = page === 'home' ? '' : 'none';
+            if (page === 'home') {
+                homeUser.innerText = currentUser;
+                homeRole.innerText = userRole === 'admin' ? '管理员' : '普通用户';
+                adminTabs.style.display = userRole === 'admin' ? '' : 'none';
+                userTabs.style.display = userRole === 'user' ? '' : 'none';
+                showAdminTab('institution');
+                showUserTab('path');
+            }
+        }
+        // 登录
+        function login() {
+            fetch(api + '/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: loginUsername.value,
+                    password: loginPassword.value
+                })
+            }).then(r => r.json()).then(d => {
+                if (d.role) {
+                    userRole = d.role;
+                    currentUser = loginUsername.value;
+                    showPage('home');
+                } else {
+                    loginMsg.innerText = d.msg || '登录失败';
+                }
+            });
+        }
+        // 注册
+        function register() {
+            fetch(api + '/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: registerUsername.value,
+                    password: registerPassword.value,
+                    role: registerRole.value
+                })
+            }).then(r => r.json()).then(d => {
+                registerMsg.innerText = d.msg;
+                if (d.msg && d.msg.includes('成功')) {
+                    setTimeout(() => showPage('login'), 1000);
+                }
+            });
+        }
+        // 退出
+        function logout() {
+            userRole = '';
+            currentUser = '';
+            showPage('login');
+        }
+        // 管理员Tab切换
+        function showAdminTab(tab) {
+            if (userRole !== 'admin') return;
+            document.getElementById('tab-admin-institution').classList.remove('active');
+            document.getElementById('tab-admin-edge').classList.remove('active');
+            document.getElementById('tab-admin-path').classList.remove('active');
+            adminInstitution.style.display = tab === 'institution' ? '' : 'none';
+            adminEdge.style.display = tab === 'edge' ? '' : 'none';
+            adminPath.style.display = tab === 'path' ? '' : 'none';
+            document.getElementById('tab-admin-' + tab).classList.add('active');
+        }
+        // 用户Tab切换
+        function showUserTab(tab) {
+            if (userRole !== 'user') return;
+            document.getElementById('tab-user-path').classList.add('active');
+            userPath.style.display = '';
+        }
+        // 机构
+        function addInstitution() {
+            fetch(api + '/institution', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: instName.value,
+                    country: instCountry.value
+                })
+            }).then(r => r.json()).then(d => {
+                instList.innerText = d.msg;
+            });
+        }
+        function getInstitutions() {
+            fetch(api + '/institutions').then(r => r.json()).then(list => {
+                instList.innerHTML = list.map(i => `机构: ${i.name} 国家: ${i.country}`).join('<br>');
+            });
+        }
+        // 路径
+        function addEdge() {
+            fetch(api + '/edge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    from: edgeFrom.value,
+                    to: edgeTo.value,
+                    feeRate: parseFloat(edgeFee.value),
+                    fromCur: edgeFromCur.value,
+                    toCur: edgeToCur.value
+                })
+            }).then(r => r.json()).then(d => {
+                edgeList.innerText = d.msg;
+            });
+        }
+        function getEdges() {
+            fetch(api + '/edges').then r => r.json()).then(list => {
+                edgeList.innerHTML = list.map(e => `从 ${e.from} 到 ${e.to} 手续费: ${e.feeRate} 币种: ${e.fromCur}→${e.toCur}`).join('<br>');
+            });
+        }
+        // 最优路径（管理员）
+        function findBestPath() {
+            fetch(api + '/bestpath', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    start: pathFrom.value,
+                    end: pathTo.value,
+                    amount: parseFloat(pathAmount.value)
+                })
+            }).then(r => r.json()).then(d => {
+                if (d.path) {
+                    pathResult.innerHTML = `最优路径: ${d.path.join(' → ')}<br>最终金额: ${d.finalAmount}`;
+                } else {
+                    pathResult.innerText = d.msg || '查询失败';
+                }
+            });
+        }
+        // 最优路径（普通用户）
+        function findBestPathUser() {
+            fetch(api + '/bestpath', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    start: upathFrom.value,
+                    end: upathTo.value,
+                    amount: parseFloat(upathAmount.value)
+                })
+            }).then(r => r.json()).then(d => {
+                if (d.path) {
+                    upathResult.innerHTML = `最优路径: ${d.path.join(' → ')}<br>最终金额: ${d.finalAmount}`;
+                } else {
+                    upathResult.innerText = d.msg || '查询失败';
+                }
+            });
+        }
+        // dom简写
+        const pageLogin = document.getElementById('page-login');
+        const pageRegister = document.getElementById('page-register');
+        const pageHome = document.getElementById('page-home');
+        const loginUsername = document.getElementById('login-username');
+        const loginPassword = document.getElementById('login-password');
+        const loginMsg = document.getElementById('login-msg');
+        const registerUsername = document.getElementById('register-username');
+        const registerPassword = document.getElementById('register-password');
+        const registerRole = document.getElementById('register-role');
+        const registerMsg = document.getElementById('register-msg');
+        const homeUser = document.getElementById('home-user');
+        const homeRole = document.getElementById('home-role');
+        const adminTabs = document.getElementById('admin-tabs');
+        const userTabs = document.getElementById('user-tabs');
+        const adminInstitution = document.getElementById('admin-institution');
+        const adminEdge = document.getElementById('admin-edge');
+        const adminPath = document.getElementById('admin-path');
+        const userPath = document.getElementById('user-path');
+        const instName = document.getElementById('inst-name');
+        const instCountry = document.getElementById('inst-country');
+        const instList = document.getElementById('inst-list');
+        const edgeFrom = document.getElementById('edge-from');
+        const edgeTo = document.getElementById('edge-to');
+        const edgeFee = document.getElementById('edge-fee');
+        const edgeFromCur = document.getElementById('edge-fromCur');
+        const edgeToCur = document.getElementById('edge-toCur');
+        const edgeList = document.getElementById('edge-list');
+        const pathFrom = document.getElementById('path-from');
+        const pathTo = document.getElementById('path-to');
+        const pathAmount = document.getElementById('path-amount');
+        const pathResult = document.getElementById('path-result');
+        const upathFrom = document.getElementById('upath-from');
+        const upathTo = document.getElementById('upath-to');
+        const upathAmount = document.getElementById('upath-amount');
+        const upathResult = document.getElementById('upath-result');
+        // 默认显示登录页
+        showPage('login');
+    </script>
+</body>
+</html>
