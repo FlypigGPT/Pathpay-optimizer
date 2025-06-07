@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <title>主页 - Pathpay Optimizer</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>body { font-family: Arial, sans-serif; margin: 30px; background: #f7f7f7; } h1 { text-align: center; } h2 { color: #2c3e50; } .section { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #eee; margin-bottom: 30px; padding: 20px; } label { display: block; margin-top: 10px; } input, select { margin-top: 5px; padding: 8px; border-radius: 4px; border: 1px solid #ccc; width: calc(100% - 16px); } button { margin-top: 10px; padding: 10px 20px; border: none; border-radius: 4px; background: #3498db; color: #fff; cursor: pointer; width: 100%; } button:hover { background: #217dbb; } .center { text-align: center; } .btn-group { display: flex; flex-direction: column; gap: 16px; max-width: 300px; margin: 30px auto 0 auto; }</style>
+    <style>body { font-family: Arial, sans-serif; margin: 30px; background: #f7f7f7; } h1 { text-align: center; } h2 { color: #2c3e50; } .section { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #eee; margin-bottom: 30px; padding: 20px; } label { display: block; margin-top: 10px; } input, select { margin-top: 5px; padding: 8px; border-radius: 4px; border: 1px solid #ccc; width: calc(100% - 16px); } button { margin-top: 10px; padding: 10px 20px; border: none; border-radius: 4px; background: #3498db; color: #fff; cursor: pointer; width: 100%; } button:hover { background: #217dbb; } .center { text-align: center; } .btn-group { display: flex; flex-direction: column; gap: 16px; max-width: 300px; margin: 30px auto 0 auto; } #stats-cards div { text-align: center; }</style>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 </head>
 <body>
     <h1>Pathpay Optimizer</h1>
@@ -21,6 +22,11 @@
     <div class="btn-group" id="user-btns" style="display:none;">
         <button onclick="location.href='bestpath.html'">最优路径查询</button>
     </div>
+    <div class="section center" style="margin-bottom:10px;">
+        <h2>系统总览</h2>
+        <div id="stats-cards" style="display:flex;justify-content:center;gap:40px;margin-bottom:20px;"></div>
+        <div id="stats-pie" style="width:400px;height:300px;margin:0 auto;"></div>
+    </div>
     <script>
         let userRole = localStorage.getItem('userRole') || '';
         let currentUser = localStorage.getItem('currentUser') || '';
@@ -35,11 +41,38 @@
             localStorage.removeItem('currentUser');
             window.location.href = 'login.html';
         }
+        async function loadStats() {
+            const res = await fetch('/api/stats');
+            const stats = await res.json();
+            // 数字卡片
+            document.getElementById('stats-cards').innerHTML = `
+                <div><h3>${stats.institutionCount}</h3><div>机构数</div></div>
+                <div><h3>${stats.edgeCount}</h3><div>路径数</div></div>
+                <div><h3>${stats.userCount}</h3><div>用户数</div></div>
+            `;
+            // 环形图
+            let pie = echarts.init(document.getElementById('stats-pie'));
+            pie.setOption({
+                title: { text: '机构/路径/用户占比', left: 'center' },
+                tooltip: { trigger: 'item' },
+                legend: { bottom: 0 },
+                series: [{
+                    name: '占比', type: 'pie', radius: ['50%', '70%'],
+                    data: [
+                        { value: stats.institutionCount, name: '机构' },
+                        { value: stats.edgeCount, name: '路径' },
+                        { value: stats.userCount, name: '用户' }
+                    ],
+                    label: { formatter: '{b}: {c}' }
+                }]
+            });
+        }
         window.onload = function() {
             if (!userRole || !currentUser) {
                 window.location.href = 'login.html';
             } else {
                 initHome();
+                loadStats();
             }
         }
     </script>

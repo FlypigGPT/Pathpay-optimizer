@@ -156,6 +156,18 @@ app.post('/api/bestpath', async (req, res) => {
     }
 });
 
+// 系统统计接口
+app.get('/api/stats', async (req, res) => {
+    try {
+        const [[{count: institutionCount}]] = await db.query('SELECT COUNT(*) as count FROM institutions');
+        const [[{count: edgeCount}]] = await db.query('SELECT COUNT(*) as count FROM edges');
+        const [[{count: userCount}]] = await db.query('SELECT COUNT(*) as count FROM users');
+        res.json({ institutionCount, edgeCount, userCount });
+    } catch (e) {
+        res.status(500).json({ msg: '统计失败', error: e.message });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });

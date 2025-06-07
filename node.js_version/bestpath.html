@@ -28,6 +28,7 @@
         <h2>查询结果</h2>
         <div id="bestpath-result"></div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/countup.js@2.6.2/dist/countUp.umd.js"></script>
     <script>
         let userRole = localStorage.getItem('userRole') || '';
         let currentUser = localStorage.getItem('currentUser') || '';
@@ -106,6 +107,7 @@
                             // 计算每条路径手续费
                             let details = '';
                             let curAmount = parseFloat(amount);
+                            let feeArr = [];
                             for (let i = 0; i < r.path.length - 1; i++) {
                                 let fromNode = r.path[i];
                                 let toNode = r.path[i + 1];
@@ -113,12 +115,18 @@
                                 if (edge) {
                                     let fee = curAmount * edge.feeRate;
                                     let feeCur = edge.fromCur;
-                                    details += `从 ${fromNode} 到 ${toNode} 手续费：${fee.toFixed(2)} ${feeCur}<br>`;
-                                    // 计算下一个节点的金额（不考虑汇率，若需考虑汇率可扩展）
+                                    details += `<span id='fee${i}'></span> 从 ${fromNode} 到 ${toNode} 手续费<br>`;
+                                    feeArr.push({id: `fee${i}`, value: fee, cur: feeCur});
                                     curAmount = curAmount * (1 - edge.feeRate);
                                 }
                             }
-                            resultDiv.innerHTML = `最优路径：${r.path.join(' → ')}<br>${details}最终金额：${finalAmount} ${unit}`;
+                            resultDiv.innerHTML = `最优路径：${r.path.join(' → ')}<br>${details}<span id='final-amount'></span> 最终金额：${unit}`;
+                            // 动画显示手续费
+                            feeArr.forEach(f => {
+                                new countUp.CountUp(f.id, f.value.toFixed(2), {suffix: ' ' + f.cur}).start();
+                            });
+                            // 动画显示最终金额
+                            new countUp.CountUp('final-amount', finalAmount, {suffix: ' ' + unit}).start();
                         } else {
                             resultDiv.innerHTML = r.msg || '未找到路径';
                         }
