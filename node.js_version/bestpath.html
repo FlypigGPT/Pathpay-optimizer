@@ -30,11 +30,13 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/countup.js@2.6.2/dist/countUp.umd.js"></script>
     <script>
+        // 获取用户身份信息
         let userRole = localStorage.getItem('userRole') || '';
         let currentUser = localStorage.getItem('currentUser') || '';
         let fromCur = '';
         let toCur = '';
         let lastEdges = [];
+        // 检查是否已登录
         function checkAuth() {
             if (!userRole || !currentUser) {
                 window.location.href = 'login.html';
@@ -42,6 +44,7 @@
             document.getElementById('bp-user').innerText = currentUser;
             document.getElementById('bp-role').innerText = userRole === 'admin' ? '管理员' : '普通用户';
         }
+        // 查询起点机构币种
         function getFromCurrency() {
             let from = document.getElementById('from-name').value.trim();
             if (!from) return;
@@ -60,6 +63,7 @@
                     }
                 });
         }
+        // 查询终点机构币种
         function getToCurrency() {
             let to = document.getElementById('to-name').value.trim();
             if (!to) return;
@@ -68,7 +72,7 @@
                 .then(list => {
                     let found = list.find(i => i.name === to);
                     if (found) {
-                        fetch('/api/edges').then(res => res.json()).then(edges => {
+                        fetch('/api/edges').then res => res.json()).then(edges => {
                             let edge = edges.find(e => e.to === to);
                             toCur = edge ? edge.toCur : '';
                             document.getElementById('to-currency').innerText = toCur ? `币种：${toCur}` : '未找到该机构的币种';
@@ -78,6 +82,7 @@
                     }
                 });
         }
+        // 显示初始金额单位
         function setAmountCurrency() {
             if (fromCur) {
                 document.getElementById('amount-currency').innerText = `初始金额单位：${fromCur}`;
@@ -85,14 +90,17 @@
                 document.getElementById('amount-currency').innerText = '';
             }
         }
+        // 提交表单，查询最优路径
         document.getElementById('bestpath-form').onsubmit = function(e) {
             e.preventDefault();
             let from = document.getElementById('from-name').value.trim();
             let to = document.getElementById('to-name').value.trim();
             let amount = document.getElementById('amount').value.trim();
             if (!from || !to || !amount) return;
+            // 获取所有路径信息
             fetch('/api/edges').then(res => res.json()).then(edges => {
                 lastEdges = edges;
+                // 查询最优路径
                 fetch('/api/bestpath', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -104,7 +112,7 @@
                         if (r.path && typeof r.finalAmount === 'number') {
                             let finalAmount = r.finalAmount.toFixed(2);
                             let unit = toCur ? toCur : '';
-                            // 计算每条路径手续费
+                            // 计算每条路径手续费明细
                             let details = '';
                             let curAmount = parseFloat(amount);
                             let feeArr = [];
@@ -120,12 +128,11 @@
                                     curAmount = curAmount * (1 - edge.feeRate);
                                 }
                             }
+                            // 显示路径和金额，带动画
                             resultDiv.innerHTML = `最优路径：${r.path.join(' → ')}<br>${details}<span id='final-amount'></span> 最终金额：${unit}`;
-                            // 动画显示手续费
                             feeArr.forEach(f => {
                                 new countUp.CountUp(f.id, f.value.toFixed(2), {suffix: ' ' + f.cur}).start();
                             });
-                            // 动画显示最终金额
                             new countUp.CountUp('final-amount', finalAmount, {suffix: ' ' + unit}).start();
                         } else {
                             resultDiv.innerHTML = r.msg || '未找到路径';
@@ -133,6 +140,7 @@
                     });
             });
         };
+        // 页面加载时检查登录
         window.onload = function() {
             checkAuth();
         };

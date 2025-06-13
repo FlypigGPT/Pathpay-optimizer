@@ -103,37 +103,49 @@ app.get('/api/rate', async (req, res) => {
 app.post('/api/bestpath', async (req, res) => {
     const { start, end, amount } = req.body;
     try {
+        // 从数据库获取所有边，构建图
         const [edges] = await db.query('SELECT from_institution as `from`, to_institution as `to`, feeRate, fromCur, toCur FROM edges');
-        // 1. 先用无权重/无汇率的Dijkstra找可达路径
+        // 构建邻接表 graph
         let graph = {};
         edges.forEach(e => {
             if (!graph[e.from]) graph[e.from] = [];
             graph[e.from].push(e);
         });
-        let visited = new Set();
-        let prev = {};
-        let queue = [start];
+
+        // ----------- BFS部分：判断起点和终点是否连通 -----------
+        let visited = new Set(); // 记录已访问节点
+        let prev = {};           // 记录每个节点的前驱节点，用于还原路径
+        let queue = [start];     // 队列，初始只包含起点
         visited.add(start);
-        let found = false;
+        let found = false;       // 标记是否找到终点
         while (queue.length) {
-            let node = queue.shift();
-            if (node === end) { found = true; break; }
+            let node = queue.shift(); // 取出队首节点
+            if (node === end) {       // 如果找到终点
+                found = true;
+                break;
+            }
+            // 遍历所有从当前节点出发的边
             for (let edge of (graph[node] || [])) {
-                if (!visited.has(edge.to)) {
+                if (!visited.has(edge.to)) { // 如果目标节点未访问过
                     visited.add(edge.to);
-                    prev[edge.to] = node;
-                    queue.push(edge.to);
+                    prev[edge.to] = node;   // 记录前驱
+                    queue.push(edge.to);    // 入队
                 }
             }
         }
+        // ----------- BFS部分结束 -----------
+
+        // 如果未找到终点，说明不可达，直接返回
         if (!found) return res.json({ msg: '无法到达目标机构' });
-        // 2. 还原路径
+
+        // 还原路径：从终点反向追溯到起点
         let path = [], at = end;
         while (at) {
             path.unshift(at);
             at = prev[at];
         }
-        // 3. 只对路径上的边查汇率并计算金额
+
+        // 只对路径上的边查汇率并计算金额
         let curAmount = amount;
         let apiKey = 'RGBaQ6phT9oTNYbWnfsWacN28mahcOJj';
         for (let i = 0; i < path.length - 1; i++) {
@@ -141,6 +153,7 @@ app.post('/api/bestpath', async (req, res) => {
             let toNode = path[i + 1];
             let edge = edges.find(e => e.from === fromNode && e.to === toNode);
             let rate = 1;
+            // 如果币种不同，查汇率
             if (edge && edge.fromCur !== edge.toCur) {
                 try {
                     const url = `https://api.apilayer.com/currency_data/convert?from=${edge.fromCur}&to=${edge.toCur}&amount=1`;
@@ -148,8 +161,10 @@ app.post('/api/bestpath', async (req, res) => {
                     if (response.data.success) rate = response.data.result;
                 } catch {}
             }
+            // 扣除手续费并换算金额
             curAmount = curAmount * rate * (1 - (edge ? edge.feeRate : 0));
         }
+        // 返回最优路径和最终金额
         res.json({ path, finalAmount: curAmount });
     } catch (e) {
         res.status(500).json({ msg: '最优路径查询失败', error: e.message });
@@ -171,3 +186,5 @@ app.get('/api/stats', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });
+
+
